@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Explore noisy moving letters and shapes with the original Python stimulus generator.">
+<title>Noisy moving letters · Explorer</title>
+<link rel="icon" href="https://noisy-moving-letters.onrender.com/favicon.svg" type="image/svg+xml">
+<style>
+:root{color-scheme:light;font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20332e;background:#f6f7f2}
+*{box-sizing:border-box}body{margin:0}iframe{display:block;border:0;width:100%;height:100vh;height:100dvh}#loading{position:fixed;inset:0;display:grid;place-items:center;background:#f6f7f2;padding:24px}#loading[hidden]{display:none}.card{max-width:470px}h1{font-size:30px;line-height:1.2;letter-spacing:-.7px;margin:8px 0 16px}.eyebrow{font-size:11px;letter-spacing:1.7px;font-weight:700;color:#226d53}p{color:#64746e;margin:0 0 16px}a{color:#226d53}button{font:inherit;background:#226d53;color:#fff;border:0;border-radius:7px;padding:8px 15px;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid #81b9a1;outline-offset:3px}.actions{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.spinner{width:24px;height:24px;border:2px solid #dce3dc;border-top-color:#226d53;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:20px}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style>
+</head>
+<body>
+<iframe id="explorer" title="Noisy moving letters stimulus explorer" allow="clipboard-write; fullscreen"></iframe>
+<div id="loading"><main class="card"><div class="spinner" aria-hidden="true"></div><span class="eyebrow">NOISY MOVING LETTERS</span><h1>Stimulus explorer</h1><p id="status" role="status" aria-live="polite">Starting the explorer. The free server may need about a minute to wake up.</p><div class="actions"><button id="retry" hidden>Try again</button><a id="direct" href="https://noisy-moving-letters.onrender.com/" target="_blank" rel="noopener">Open explorer directly ↗</a></div><noscript><p>Enable JavaScript, or follow the link to open the explorer.</p></noscript></main></div>
+<script>
+'use strict';
+const origin='https://noisy-moving-letters.onrender.com';
+const frame=document.querySelector('#explorer'),overlay=document.querySelector('#loading'),status=document.querySelector('#status'),retry=document.querySelector('#retry');
+let generation=0,timeout;
+function failed(message){status.textContent=message;retry.hidden=false;document.querySelector('.spinner').hidden=true;}
+window.addEventListener('message',event=>{if(event.source===frame.contentWindow && event.origin===origin && event.data?.type==='nml-ready'){clearTimeout(timeout);overlay.hidden=true;}});
+async function start(){
+ const current=++generation;clearTimeout(timeout);overlay.hidden=false;retry.hidden=true;document.querySelector('.spinner').hidden=false;
+ status.textContent='Starting the explorer. The free server may need about a minute to wake up.';
+ const deadline=Date.now()+150000;
+ while(current===generation && Date.now()<deadline){
+  try{
+   const response=await fetch(origin+'/api/health',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+   if(response.ok && (await response.json()).status==='ok'){
+    if(current!==generation)return;
+    status.textContent='Loading controls and your saved settings…';
+    frame.src=origin+'/?embed=1';
+    timeout=setTimeout(()=>failed('The explorer is taking longer than expected. Try again, or open it directly.'),90000);
+    return;
+   }
+  }catch(_){/* A sleeping server may not send CORS headers until it is ready. */}
+  await new Promise(resolve=>setTimeout(resolve,3000));
+ }
+ if(current===generation)failed('The server is currently unavailable. Try again shortly, or open the explorer directly.');
+}
+retry.onclick=start;start();
+</script>
+</body>
+</html>
