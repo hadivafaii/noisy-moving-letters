@@ -1,46 +1,76 @@
 <!doctype html>
 <html lang="en">
 <head>
+<base href="./assets/db952caf8cf8510826d1096956b82a9aa11c93c9/">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Explore noisy moving letters and shapes with the original Python stimulus generator.">
 <title>Noisy moving letters · Explorer</title>
-<link rel="icon" href="https://noisy-moving-letters.onrender.com/favicon.svg" type="image/svg+xml">
-<style>
-:root{color-scheme:light;font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20332e;background:#f6f7f2}
-*{box-sizing:border-box}body{margin:0}iframe{display:block;border:0;width:100%;height:100vh;height:100dvh}#loading{position:fixed;inset:0;display:grid;place-items:center;background:#f6f7f2;padding:24px}#loading[hidden]{display:none}.card{max-width:470px}h1{font-size:30px;line-height:1.2;letter-spacing:-.7px;margin:8px 0 16px}.eyebrow{font-size:11px;letter-spacing:1.7px;font-weight:700;color:#226d53}p{color:#64746e;margin:0 0 16px}a{color:#226d53}button{font:inherit;background:#226d53;color:#fff;border:0;border-radius:7px;padding:8px 15px;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid #81b9a1;outline-offset:3px}.actions{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.spinner{width:24px;height:24px;border:2px solid #dce3dc;border-top-color:#226d53;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:20px}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
-</style>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
-<iframe id="explorer" title="Noisy moving letters stimulus explorer" allow="clipboard-write; fullscreen"></iframe>
-<div id="loading"><main class="card"><div class="spinner" aria-hidden="true"></div><span class="eyebrow">NOISY MOVING LETTERS</span><h1>Stimulus explorer</h1><p id="status" role="status" aria-live="polite">Starting the explorer. The free server may need about a minute to wake up.</p><div class="actions"><button id="retry" hidden>Try again</button><a id="direct" href="https://noisy-moving-letters.onrender.com/" target="_blank" rel="noopener">Open explorer directly ↗</a></div><noscript><p>Enable JavaScript, or follow the link to open the explorer.</p></noscript></main></div>
-<script>
-'use strict';
-const origin='https://noisy-moving-letters.onrender.com';
-const frame=document.querySelector('#explorer'),overlay=document.querySelector('#loading'),status=document.querySelector('#status'),retry=document.querySelector('#retry');
-let generation=0,timeout;
-function failed(message){status.textContent=message;retry.hidden=false;document.querySelector('.spinner').hidden=true;}
-window.addEventListener('message',event=>{if(event.source===frame.contentWindow && event.origin===origin && event.data?.type==='nml-ready'){clearTimeout(timeout);overlay.hidden=true;}});
-async function start(){
- const current=++generation;clearTimeout(timeout);overlay.hidden=false;retry.hidden=true;document.querySelector('.spinner').hidden=false;
- status.textContent='Starting the explorer. The free server may need about a minute to wake up.';
- const deadline=Date.now()+150000;
- while(current===generation && Date.now()<deadline){
-  try{
-   const response=await fetch(origin+'/api/health',{cache:'no-store',signal:AbortSignal.timeout(15000)});
-   if(response.ok && (await response.json()).status==='ok'){
-    if(current!==generation)return;
-    status.textContent='Loading controls and your saved settings…';
-    frame.src=origin+'/?embed=1';
-    timeout=setTimeout(()=>failed('The explorer is taking longer than expected. Try again, or open it directly.'),90000);
-    return;
-   }
-  }catch(_){/* A sleeping server may not send CORS headers until it is ready. */}
-  await new Promise(resolve=>setTimeout(resolve,3000));
- }
- if(current===generation)failed('The server is currently unavailable. Try again shortly, or open the explorer directly.');
-}
-retry.onclick=start;start();
-</script>
+<header>
+  <div><span class="eyebrow">NOISY MOVING LETTERS</span><h1>Stimulus explorer</h1><div id="runtimeStatus" role="status" style="font-size:12px;color:#64746e;margin-top:5px">Preparing local previews…</div></div>
+  <div class="header-actions"><button id="load">Load settings</button><button id="save">Save settings</button><button id="reset">Reset to defaults</button></div>
+</header>
+<div id="versionNotice" class="version-notice" role="status" hidden>
+  <span>A new explorer version is available. Your settings will be kept.</span>
+  <button id="refreshVersion">Refresh explorer</button>
+</div>
+<main>
+  <aside aria-label="Stimulus controls">
+    <div class="settings-search" role="search" aria-label="Settings">
+      <div id="sceneEditor" class="scene-editor" hidden><label for="sceneSelect">Editing</label><select id="sceneSelect" aria-label="Editing preview"></select></div>
+      <label for="settingsSearch">Search settings</label>
+      <div class="search-input-row"><input id="settingsSearch" type="search" placeholder="Position, speed, texture…" autocomplete="off" aria-controls="controls" aria-describedby="searchHelp" aria-keyshortcuts="Control+k Meta+k"><button id="clearSearch" aria-label="Clear settings search" hidden>Clear</button><span id="searchInfo"></span></div>
+      <span id="searchHelp" class="sr-only">Search common appearance, all objects, shared settings, background, and scene controls. Control or Command K focuses search. Enter moves to the first result. Escape clears search.</span>
+      <p id="searchStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+    </div>
+    <div id="controls"></div>
+    <div id="controlStatus" class="sr-only" role="status"></div>
+  </aside>
+  <section class="stage" aria-label="Live preview">
+    <div class="stage-top"><div><span class="eyebrow">LIVE PREVIEW</span><h2 id="sceneTitle">Moving object, still background</h2></div><span id="status" role="status">Starting…</span></div>
+    <div id="error" role="alert" hidden></div>
+    <div id="limitNotice" role="status" hidden>
+      <strong>Preview paused — above your limit</strong>
+      <p id="limitNoticeText"></p>
+      <button id="raiseLimit">Increase limit…</button>
+      <p class="hint">Your previous preview stays visible. Reduce the clip size or confirm a higher limit to continue.</p>
+    </div>
+    <div class="comparison-tools" role="group" aria-label="Comparisons"><span id="comparisonCount">No saved comparisons</span><button id="compare" disabled>+ Keep for comparison</button><button id="clearComparisons" hidden>Remove all</button><span id="comparisonInfo"></span><div id="sceneActions" class="scene-actions" hidden><span id="editingName"></span><button id="moveSceneEarlier" aria-label="Move selected preview earlier">← Earlier</button><button id="moveSceneLater" aria-label="Move selected preview later">Later →</button><button id="renameScene">Rename</button></div></div>
+    <form id="sceneRenameForm" class="scene-rename" hidden><label for="sceneName">Preview name</label><input id="sceneName" type="text" maxlength="60" required data-text-entry><button type="submit">Save name</button><button type="button" id="cancelSceneRename">Cancel</button></form>
+    <div id="screens">
+      <figure id="livePreview"><div class="screen-head live-head"><span>Current preview</span></div><div class="canvas-wrap"><canvas id="preview" width="256" height="256" aria-label="Generated stimulus"></canvas></div><figcaption id="readout">Preparing stimulus…</figcaption></figure>
+    </div>
+    <div class="transport"><button id="play" aria-label="Pause playback" aria-keyshortcuts="Space" title="Play / pause (Space)">Pause</button><input id="scrub" aria-label="Frame" type="range" min="0" max="47" value="0"><output id="frameLabel">1 / 48</output><label>View size <select id="zoom"><option value="fit">Fit</option><option value="1">1× pixels</option><option value="2">2× pixels</option></select></label></div>
+    <details id="canvasSettings" class="preview-settings">
+      <summary>Canvas &amp; playback</summary>
+      <div id="canvasControls"></div>
+    </details>
+    <div class="view-tools"><label><input id="outline" type="checkbox"> Show object outline</label><label>Display <select id="display"><option value="video">Stimulus</option><option value="mask">Object mask</option><option value="diff">Frame difference</option><option value="mean">Temporal mean</option></select></label></div>
+    <div id="viewHelpInfo"></div>
+    <div class="preview-help"><span>About this preview</span><div id="explanationInfo"></div><span>Playback shortcuts</span><div id="playbackInfo"></div></div>
+    <div class="export-tools"><label for="exportScope">Download <select id="exportScope" aria-describedby="exportHint"><option value="active">Active preview</option><option value="all" disabled>All previews</option></select></label><label for="exportResolution">Resolution <select id="exportResolution" aria-describedby="exportHint"><option value="1">Standard</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label><button id="mp4">Download MP4</button><button id="gif">Download GIF</button><span id="exportInfo"></span><button id="python">Copy Python</button><span id="exportStatus" role="status"></span></div>
+    <p id="exportHint" class="hint"></p>
+    <details class="examples"><summary>Load an example</summary><div class="example-controls"><span id="examplesInfo"></span><select id="preset" aria-label="Example"><option value="">Choose an example…</option></select></div></details>
+  </section>
+</main>
+<dialog id="limitDialog" aria-labelledby="limitTitle" aria-describedby="limitSummary limitWarning">
+  <form method="dialog">
+    <h2 id="limitTitle">Are you sure?</h2>
+    <p id="limitSummary"></p>
+    <p id="limitWarning">Larger clips use more memory and can slow down or freeze the explorer if your computer runs out of memory.</p>
+    <p id="limitMemory" class="hint"></p>
+    <p class="hint">The new limit applies to this page until you reload it. Edits within that limit will not ask again.</p>
+    <div class="dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="confirm" id="confirmLimit">Increase limit and continue</button></div>
+  </form>
+</dialog>
+<input id="importFile" type="file" accept=".json,application/json" hidden>
+<script src="live.js"></script>
+<script>globalThis.NML_BROWSER_CONFIG={"revision": "db952caf8cf8510826d1096956b82a9aa11c93c9", "server": "https://noisy-moving-letters.onrender.com"};</script>
+<script src="browser.js"></script>
+<script src="hosting.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

@@ -2,17 +2,23 @@
 
 [Open the explorer](https://hadivafaii.github.io/noisy-moving-letters/)
 
-This repository contains the GitHub Pages entry point. The complete explorer,
-including its interface and original Python generator, is served together by
-Render and embedded here. There is no second implementation of the simulator.
+Open the link to use the explorer. No installation, account, or local Python
+server is needed. The interface and initial preview load from GitHub Pages;
+the original Python generator runs on your device through Pyodide in a web
+worker. GIF and MP4 downloads also run locally. The video encoder loads only
+when an MP4 is requested.
 
-The private source repository deploys `main` automatically after its checks pass.
-New visits use the latest successful deployment. Existing sessions offer a refresh
-and preserve their settings. Source updates do not require a separate Pages build.
+If browser execution is unavailable, the explorer automatically uses the Render
+service, preserving your settings. That free backup server may need about a
+minute to wake up. Large scenes remain subject to memory and workload limits.
 
-The free server sleeps when idle, so a first visit can take about a minute.
-Previews, comparisons, saved settings, Python snippets, and MP4/GIF downloads use
-the same explorer as local installations, subject to the shared server's limits.
+This repository is the generated public site. Its `nml.zip` contains the exact
+generator source shipped to browsers; the development repository stays private.
+Pushes to the source repository's `main` branch publish a new browser build after
+all tests pass and redeploy Render. Existing sessions offer a refresh and retain
+settings and comparisons. The deployed source revision is in `version.json`.
 
-GitHub Pages publishes the root of this repository's `main` branch. Changes to
-this entry point are automatically published by GitHub Pages.
+Pyodide and its packages are loaded from the versioned official jsDelivr
+distribution. MP4 encoding uses ffmpeg.wasm, loaded on demand from jsDelivr.
+The FFmpeg JavaScript wrapper is distributed under the MIT license included
+with its files; FFmpeg's WebAssembly core has its own upstream license.
